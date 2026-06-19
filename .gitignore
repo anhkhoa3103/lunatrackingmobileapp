@@ -1,0 +1,21 @@
+# ── Flutter ───────────────────────────────
+luna_track/.dart_tool/
+luna_track/.flutter-plugins
+luna_track/.flutter-plugins-dependencies
+luna_track/build/
+luna_track/android/.gradle/
+luna_track/android/local.properties
+luna_track/ios/Pods/
+luna_track/**/*.g.dart
+
+# ── Spring Boot ───────────────────────────
+APILunatracking/target/
+APILunatracking/**/*.class
+
+# ── QUAN TRỌNG - không push password ─────
+APILunatracking/src/main/resources/application.properties
+
+# ── IDE ───────────────────────────────────
+.idea/
+*.iml
+.vscode/

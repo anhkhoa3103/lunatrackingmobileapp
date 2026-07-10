@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.181:8080/api';
+  static String get baseUrl => ApiConfig.baseUrl;
   // 10.0.2.2 = Android emulator localhost
   // Change to your PC IP (e.g. 192.168.1.x) for real device
 
@@ -127,6 +128,30 @@ class ApiService {
       headers: await _authHeaders(),
     );
     return res.statusCode == 204;
+  }
+
+  // ── AI Chat ───────────────────────────────────────────────
+  static Future<String?> sendChatMessage({
+    required String message,
+    required List<Map<String, String>> history,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/chat'),
+        headers: await _authHeaders(),
+        body: jsonEncode({
+          'message': message,
+          'history': history,
+        }),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['message'] as String?;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   // Save user profile to SharedPreferences

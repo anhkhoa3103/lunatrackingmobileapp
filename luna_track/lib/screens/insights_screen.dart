@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:lottie/lottie.dart';
+import '../l10n.dart';
 import '../models/cycle_entry.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../utils/app_colors.dart';
+import '../utils/app_theme.dart';
+import '../widgets/skeleton_loaders.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
@@ -181,12 +186,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
-        title: const Text('Insights',
-            style: TextStyle(
+        title: Text(AppLocalizations.of(context)!.insights,
+            style: const TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w500)),
         actions: [
           IconButton(
@@ -196,8 +201,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(
-          color: _pink))
+          ? const InsightsScreenSkeleton()
           : _entries.isEmpty
           ? _buildEmptyState()
           : SingleChildScrollView(
@@ -228,33 +232,80 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   // ── Empty state ──────────────────────────────────────────────
-  Widget _buildEmptyState() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.bar_chart, size: 64, color: Colors.grey[300]),
-        const SizedBox(height: 16),
-        Text('No data yet',
-            style: TextStyle(
-                fontSize: 16, color: Colors.grey[500])),
-        const SizedBox(height: 8),
-        Text('Start logging your cycle to see insights',
-            style: TextStyle(
-                fontSize: 13, color: Colors.grey[400])),
-      ],
-    ),
-  );
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Lottie animation
+            Lottie.asset(
+              'assets/lottie/empty_chart.json',
+              width: 200,
+              height: 200,
+              repeat: true,
+              animate: true,
+              // If asset not found, fallback:
+              errorBuilder: (_, __, ___) => const Text(
+                  '📊', style: TextStyle(fontSize: 72)),
+            ),
+
+            const SizedBox(height: 20),
+
+            const Text(
+              'Chưa có dữ liệu phân tích',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              'Bắt đầu ghi chép nhật ký hàng ngày\n'
+              'để xem biểu đồ và phân tích chu kỳ.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary(context),
+                height: 1.5,
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: const Text('Ghi chép ngay'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE05D6F),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ── Stat cards ───────────────────────────────────────────────
   Widget _buildStatCards() {
     return Row(children: [
       _statCard('${_avgCycleLength.toStringAsFixed(0)}d',
-          'avg cycle', _pink),
+          AppLocalizations.of(context)!.avgCycle, _pink),
       const SizedBox(width: 8),
       _statCard('${_avgPeriodDays.toStringAsFixed(0)}d',
-          'avg period', _teal),
+          AppLocalizations.of(context)!.avgPeriod, _teal),
       const SizedBox(width: 8),
-      _statCard('${_entries.length}', 'logs total', _blue),
+      _statCard('${_entries.length}',
+          AppLocalizations.of(context)!.logsTotal, _blue),
     ]);
   }
 
@@ -263,19 +314,32 @@ class _InsightsScreenState extends State<InsightsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.08),
+                color.withOpacity(0.04),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(children: [
             Text(value,
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
+                style: AppTheme.displayMedium.copyWith(
                     color: color)),
             const SizedBox(height: 4),
             Text(label,
                 style: TextStyle(
-                    fontSize: 11, color: Colors.grey[500])),
+                    fontSize: 11,
+                    color: AppColors.textSecondary(context))),
           ]),
         ),
       );
@@ -293,7 +357,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Cycle length history'),
+        _sectionTitle(AppLocalizations.of(context)!.cycleHistory),
         const SizedBox(height: 10),
         SizedBox(
           height: 160,
@@ -305,7 +369,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               drawVerticalLine: false,
               horizontalInterval: 2,
               getDrawingHorizontalLine: (_) =>
-                  FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+                  FlLine(color: AppColors.cardBorder(context),
+                      strokeWidth: 1),
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
@@ -316,7 +381,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   getTitlesWidget: (v, _) => Text(
                       '${v.toInt()}',
                       style: TextStyle(
-                          fontSize: 10, color: Colors.grey[400])),
+                          fontSize: 10,
+                          color: AppColors.textHint(context))),
                 ),
               ),
               bottomTitles: AxisTitles(
@@ -329,7 +395,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                     return Text(labels[i],
                         style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[400]));
+                            color: AppColors.textHint(context)));
                   },
                 ),
               ),
@@ -376,7 +442,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Top symptoms'),
+        _sectionTitle(AppLocalizations.of(context)!.topSymptoms),
         const SizedBox(height: 10),
         ...counts.entries.map((e) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -386,14 +452,16 @@ class _InsightsScreenState extends State<InsightsScreen> {
               child: Text(e.key,
                   textAlign: TextAlign.right,
                   style: TextStyle(
-                      fontSize: 11, color: Colors.grey[500])),
+                      fontSize: 11,
+                    color: AppColors.textSecondary(context))),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: Stack(children: [
-                  Container(height: 18, color: Colors.grey[100]),
+                  Container(height: 18,
+                      color: AppColors.surface(context)),
                   FractionallySizedBox(
                     widthFactor: e.value / maxVal,
                     child: Container(
@@ -408,7 +476,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               width: 20,
               child: Text('${e.value}',
                   style: TextStyle(
-                      fontSize: 11, color: Colors.grey[500])),
+                      fontSize: 11,
+                    color: AppColors.textSecondary(context))),
             ),
           ]),
         )),
@@ -435,7 +504,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Mood breakdown'),
+        _sectionTitle(AppLocalizations.of(context)!.moodBreakdown),
         const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 3,
@@ -449,8 +518,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
             final color = moodColors[e.key] ?? _gray;
             return Container(
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: AppColors.surface(context),
                 borderRadius: BorderRadius.circular(10),
+                boxShadow: AppColors.subtleShadow,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -464,7 +534,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   Text(e.key,
                       style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[500])),
+                          color: AppColors.textSecondary(context))),
                 ],
               ),
             );
@@ -481,18 +551,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Energy & sleep (4 weeks)'),
+        _sectionTitle(AppLocalizations.of(context)!.energySleep),
         const SizedBox(height: 6),
         Row(children: [
           _legendDot(_teal), const SizedBox(width: 4),
-          Text('Energy',
+          Text(AppLocalizations.of(context)!.energy,
               style: TextStyle(
-                  fontSize: 11, color: Colors.grey[500])),
+                  fontSize: 11,
+                    color: AppColors.textSecondary(context))),
           const SizedBox(width: 12),
           _legendDot(_blue), const SizedBox(width: 4),
-          Text('Sleep',
+          Text(AppLocalizations.of(context)!.sleep,
               style: TextStyle(
-                  fontSize: 11, color: Colors.grey[500])),
+                  fontSize: 11,
+                    color: AppColors.textSecondary(context))),
         ]),
         const SizedBox(height: 10),
         SizedBox(
@@ -504,7 +576,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               drawVerticalLine: false,
               horizontalInterval: 1,
               getDrawingHorizontalLine: (_) =>
-                  FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+                  FlLine(color: AppColors.cardBorder(context),
+                      strokeWidth: 1),
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
@@ -517,7 +590,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         i < stats.length ? stats[i].label : '',
                         style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[400]));
+                            color: AppColors.textHint(context)));
                   },
                 ),
               ),
@@ -527,15 +600,18 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   interval: 1,
                   getTitlesWidget: (v, _) {
                     switch (v.toInt()) {
-                      case 1: return Text('Low',
+                      case 1: return Text(
+                          AppLocalizations.of(context)!.low,
                           style: TextStyle(fontSize: 9,
-                              color: Colors.grey[400]));
-                      case 2: return Text('OK',
+                              color: AppColors.textHint(context)));
+                      case 2: return Text(
+                          AppLocalizations.of(context)!.ok,
                           style: TextStyle(fontSize: 9,
-                              color: Colors.grey[400]));
-                      case 3: return Text('Good',
+                              color: AppColors.textHint(context)));
+                      case 3: return Text(
+                          AppLocalizations.of(context)!.good,
                           style: TextStyle(fontSize: 9,
-                              color: Colors.grey[400]));
+                              color: AppColors.textHint(context)));
                       default: return const SizedBox();
                     }
                   },
@@ -571,9 +647,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   // ── Helpers ──────────────────────────────────────────────────
   Widget _sectionTitle(String t) => Text(t.toUpperCase(),
-      style: TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600,
-          color: Colors.grey[500], letterSpacing: 0.8));
+      style: AppTheme.labelSmall.copyWith(
+          color: AppColors.textSecondary(context)));
 
   Widget _legendDot(Color c) => Container(
       width: 10, height: 10,

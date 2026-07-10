@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/api_service.dart';
+import '../l10n.dart';
+import '../providers/locale_notifier.dart';
+import '../providers/theme_notifier.dart';
+import '../utils/app_colors.dart';
+import '../utils/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -57,10 +62,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(children: [
-          Icon(Icons.check_circle, color: Colors.white, size: 16),
-          SizedBox(width: 8),
-          Text('Profile saved'),
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 16),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context)!.profileSaved),
         ]),
         backgroundColor: const Color(0xFF1D9E75),
         behavior: SnackBarBehavior.floating,
@@ -83,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       body: Column(
         children: [
           _buildHero(),
@@ -92,10 +97,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle('Personal info'),
+                  _buildSectionTitle(
+                      AppLocalizations.of(context)!.personalInfo),
                   _buildPersonalInfo(),
-                  _buildSectionTitle('Cycle settings'),
+                  _buildSectionTitle(
+                      AppLocalizations.of(context)!.cycleSettings),
                   _buildCycleSettings(),
+                  _buildSectionTitle(
+                      AppLocalizations.of(context)!.appearance),
+                  _buildThemeSelector(),
+                  _buildSectionTitle(
+                      AppLocalizations.of(context)!.language),
+                  _buildLanguageSelector(),
                   const SizedBox(height: 24),
                   if (_editing) _buildSaveButton(),
                   const SizedBox(height: 32),
@@ -149,9 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_name.isEmpty ? 'Your name' : _name,
-                    style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w500,
+                    style: AppTheme.headlineMedium.copyWith(
                         color: Colors.white)),
                 const SizedBox(height: 2),
                 Text(_email,
@@ -184,14 +195,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── Personal info ────────────────────────────────────────────
   Widget _buildPersonalInfo() {
-    return Column(
+    return _sectionCard(
       children: [
-        _fieldRow('Name',
+        _fieldRow(AppLocalizations.of(context)!.name,
             _editing
                 ? _editableField(_nameCtrl, 'Your name')
                 : Text(_name.isEmpty ? '— not set —' : _name,
                 style: _valStyle)),
-        _fieldRow('Email',
+        _fieldRow(AppLocalizations.of(context)!.email,
             Text(_email, style: _valStyle)),
       ],
     );
@@ -199,31 +210,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── Cycle settings ───────────────────────────────────────────
   Widget _buildCycleSettings() {
-    return Column(
+    return _sectionCard(
       children: [
-        _fieldRow('Cycle length',
+        _fieldRow(AppLocalizations.of(context)!.avgCycleLength,
             _editing
                 ? _counterWidget(
                 value: _cycleLength,
                 min: 21, max: 45,
                 onChanged: (v) =>
                     setState(() => _cycleLength = v),
-                unit: 'days')
-                : Text('$_cycleLength days',
+                unit: AppLocalizations.of(context)!.days)
+                : Text(
+                '$_cycleLength ${AppLocalizations.of(context)!.days}',
                 style: _valStyle)),
 
-        _fieldRow('Period duration',
+        _fieldRow(AppLocalizations.of(context)!.periodDuration,
             _editing
                 ? _counterWidget(
                 value: _periodLength,
                 min: 2, max: 10,
                 onChanged: (v) =>
                     setState(() => _periodLength = v),
-                unit: 'days')
-                : Text('$_periodLength days',
+                unit: AppLocalizations.of(context)!.days)
+                : Text(
+                '$_periodLength ${AppLocalizations.of(context)!.days}',
                 style: _valStyle)),
 
-        _fieldRow('Last period start',
+        _fieldRow(AppLocalizations.of(context)!.lastPeriodStart,
             _editing
                 ? GestureDetector(
               onTap: _pickLastPeriodDate,
@@ -232,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   border: Border.all(
-                      color: Colors.grey[300]!),
+                      color: AppColors.cardBorder(context)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -240,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Icon(Icons.calendar_today_outlined,
                         size: 14,
-                        color: Colors.grey[500]),
+                        color: AppColors.textSecondary(context)),
                     const SizedBox(width: 6),
                     Text(
                       _lastPeriodStart != null
@@ -248,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : 'Pick a date',
                       style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[700]),
+                          color: AppColors.textSecondary(context)),
                     ),
                   ],
                 ),
@@ -260,6 +273,134 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : '— not set —',
                 style: _valStyle)),
       ],
+    );
+  }
+
+  // ── Theme selector ───────────────────────────────────────────
+  Widget _buildThemeSelector() {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final options = [
+      {'label': AppLocalizations.of(context)!.system,
+       'value': ThemeMode.system,
+       'icon': Icons.brightness_auto_outlined},
+      {'label': AppLocalizations.of(context)!.lightMode,
+       'value': ThemeMode.light,
+       'icon': Icons.light_mode_outlined},
+      {'label': AppLocalizations.of(context)!.darkMode,
+       'value': ThemeMode.dark,
+       'icon': Icons.dark_mode_outlined},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: options.map((opt) {
+          final isSelected =
+              themeNotifier.themeMode == opt['value'];
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => themeNotifier
+                  .setTheme(opt['value'] as ThemeMode),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFFE05D6F)
+                      : AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFFE05D6F)
+                        : AppColors.cardBorder(context),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(opt['icon'] as IconData,
+                        size: 20,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary(context)),
+                    const SizedBox(height: 4),
+                    Text(opt['label'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textSecondary(context),
+                          fontWeight: isSelected
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── Language selector ────────────────────────────────────────
+  Widget _buildLanguageSelector() {
+    final localeNotifier = Provider.of<LocaleNotifier>(context);
+    final options = [
+      {'label': 'Tiếng Việt', 'code': 'vi', 'flag': '🇻🇳'},
+      {'label': 'English',    'code': 'en', 'flag': '🇺🇸'},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: options.map((opt) {
+          final isSelected =
+              localeNotifier.locale.languageCode == opt['code'];
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => localeNotifier
+                  .setLocale(Locale(opt['code'] as String)),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFFE05D6F)
+                      : AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFFE05D6F)
+                        : AppColors.cardBorder(context),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(opt['flag'] as String,
+                        style: const TextStyle(fontSize: 24)),
+                    const SizedBox(height: 4),
+                    Text(opt['label'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textSecondary(context),
+                          fontWeight: isSelected
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -298,8 +439,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(12)),
             elevation: 0,
           ),
-          child: const Text('Save changes',
-              style: TextStyle(
+          child: Text(AppLocalizations.of(context)!.saveChanges,
+              style: const TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w500)),
         ),
       ),
@@ -310,28 +451,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionTitle(String title) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
     child: Text(title.toUpperCase(),
-        style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[500],
-            letterSpacing: 0.8)),
+        style: AppTheme.labelSmall.copyWith(
+            color: AppColors.textSecondary(context))),
+  );
+
+  Widget _sectionCard({required List<Widget> children}) => Container(
+    margin: const EdgeInsets.symmetric(
+        horizontal: 16, vertical: 4),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: AppColors.subtleShadow,
+    ),
+    child: Column(children: children),
   );
 
   Widget _fieldRow(String label, Widget value) => Container(
     padding: const EdgeInsets.symmetric(
         horizontal: 20, vertical: 14),
-    decoration: BoxDecoration(
-      border: Border(
-          bottom: BorderSide(
-              color: Colors.grey[100]!, width: 0.5)),
-    ),
     child: Row(
       children: [
         SizedBox(
           width: 140,
           child: Text(label,
               style: TextStyle(
-                  fontSize: 13, color: Colors.grey[500])),
+                  fontSize: 13,
+                  color: AppColors.textSecondary(context))),
         ),
         Expanded(child: value),
       ],
@@ -363,7 +508,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(width: 6),
           Text(unit,
               style: TextStyle(
-                  fontSize: 12, color: Colors.grey[500])),
+                  fontSize: 12,
+                  color: AppColors.textSecondary(context))),
         ],
       );
 
@@ -374,9 +520,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 28, height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey[300]!),
+            border: Border.all(
+                color: AppColors.cardBorder(context)),
           ),
-          child: Icon(icon, size: 14, color: Colors.grey[600]),
+          child: Icon(icon, size: 14,
+              color: AppColors.textSecondary(context)),
         ),
       );
 
@@ -389,18 +537,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(fontSize: 13),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(
+                color: AppColors.textHint(context)),
             contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12, vertical: 8),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide:
-              BorderSide(color: Colors.grey[300]!),
+              BorderSide(color: AppColors.cardBorder(context)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide:
-              BorderSide(color: Colors.grey[300]!),
+              BorderSide(color: AppColors.cardBorder(context)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

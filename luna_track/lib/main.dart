@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'l10n.dart';
 import 'providers/cycle_provider.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'services/api_service.dart';
+import 'providers/locale_notifier.dart';
+import 'providers/theme_notifier.dart';
+import 'screens/splash_screen.dart';
 import 'services/storage_service.dart';
+import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,58 +22,33 @@ class LunaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CycleProvider(),
-      child: MaterialApp(
-        title: 'Luna Track',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFE91E8C),
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CycleProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()..init()),
+        ChangeNotifierProvider(create: (_) => LocaleNotifier()..init()),
+      ],
+      child: Consumer2<ThemeNotifier, LocaleNotifier>(
+        builder: (context, themeNotifier, localeNotifier, _) => MaterialApp(
+          title: 'Luna Track',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeNotifier.themeMode,
+
+          // Localization
+          locale: localeNotifier.locale,
+          supportedLocales: const [Locale('en'), Locale('vi')],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+
+          theme:     AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+
+          home: const SplashScreen(),
         ),
-        home: const SplashRouter(),
-      ),
-    );
-  }
-}
-
-// Decides whether to show Login or Home on startup
-class SplashRouter extends StatefulWidget {
-  const SplashRouter({super.key});
-  @override
-  State<SplashRouter> createState() => _SplashRouterState();
-}
-
-class _SplashRouterState extends State<SplashRouter> {
-  @override
-  void initState() {
-    super.initState();
-    _route();
-  }
-
-  Future<void> _route() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    final loggedIn = await ApiService.isLoggedIn();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => loggedIn
-            ? const HomeScreen()
-            : const LoginScreen(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Text('🌙', style: TextStyle(fontSize: 48)),
       ),
     );
   }

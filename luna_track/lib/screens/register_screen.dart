@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 import '../services/api_service.dart';
-import 'home_screen.dart';
+import '../utils/app_colors.dart';
+import '../utils/app_theme.dart';
+import 'onboarding_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -33,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (res.containsKey('token')) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
               (_) => false,
         );
       } else {
@@ -49,9 +52,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 18),
@@ -64,28 +67,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Create account',
-                  style: TextStyle(fontSize: 24,
-                      fontWeight: FontWeight.w600)),
+              Text(AppLocalizations.of(context)!.register,
+                  style: AppTheme.displayMedium),
               const SizedBox(height: 8),
               Text('Start tracking your cycle',
                   style: TextStyle(fontSize: 15,
-                      color: Colors.grey[500])),
+                      color: AppColors.textSecondary(context))),
               const SizedBox(height: 40),
 
-              _label('Name'),
+              _label(AppLocalizations.of(context)!.name),
               const SizedBox(height: 6),
               _textField(_nameCtrl, 'Your name',
                   TextInputType.name),
               const SizedBox(height: 16),
 
-              _label('Email'),
+              _label(AppLocalizations.of(context)!.email),
               const SizedBox(height: 6),
               _textField(_emailCtrl, 'you@example.com',
                   TextInputType.emailAddress),
               const SizedBox(height: 16),
 
-              _label('Password'),
+              _label(AppLocalizations.of(context)!.password),
               const SizedBox(height: 6),
               _textField(_passwordCtrl, 'Min 8 characters',
                   TextInputType.text, obscure: true),
@@ -97,6 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFCEBEB),
                     borderRadius: BorderRadius.circular(8),
+                    boxShadow: AppColors.subtleShadow,
                   ),
                   child: Row(children: [
                     const Icon(Icons.error_outline,
@@ -128,8 +131,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
-                      : const Text('Create account',
-                      style: TextStyle(fontSize: 15,
+                      : Text(AppLocalizations.of(context)!.register,
+                      style: const TextStyle(fontSize: 15,
                           fontWeight: FontWeight.w500)),
                 ),
               ),
@@ -142,27 +145,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _label(String text) => Text(text,
       style: TextStyle(fontSize: 13,
-          fontWeight: FontWeight.w500, color: Colors.grey[700]));
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary(context)));
 
   Widget _textField(TextEditingController ctrl, String hint,
       TextInputType type, {bool obscure = false}) =>
-      TextField(
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: AppColors.subtleShadow,
+        ),
+        child: TextField(
         controller: ctrl,
         keyboardType: type,
         obscureText: obscure,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[400]),
+          hintStyle: TextStyle(color: AppColors.textHint(context)),
           filled: true,
-          fillColor: Colors.grey[50],
+          fillColor: AppColors.surface(context),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[200]!),
+            borderSide: BorderSide(color: AppColors.cardBorder(context)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[200]!),
+            borderSide: BorderSide(color: AppColors.cardBorder(context)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -170,6 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 16, vertical: 14),
+        ),
         ),
       );
 

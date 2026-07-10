@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../l10n.dart';
 import '../services/api_service.dart';
+import '../utils/app_colors.dart';
+import '../utils/app_theme.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -28,9 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => const HomeScreen()));
       } else {
         setState(() => _error = res['message'] ?? 'Login failed');
+        HapticFeedback.vibrate(); // ← error feedback
       }
     } catch (e) {
       setState(() => _error = 'Cannot connect to server');
+      HapticFeedback.vibrate(); // ← error feedback
     } finally {
       setState(() => _loading = false);
     }
@@ -39,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(28),
@@ -50,24 +56,23 @@ class _LoginScreenState extends State<LoginScreen> {
               // Logo / title
               const Text('🌙', style: TextStyle(fontSize: 48)),
               const SizedBox(height: 16),
-              const Text('Welcome back',
-                  style: TextStyle(fontSize: 24,
-                      fontWeight: FontWeight.w600)),
+              Text('Welcome back',
+                  style: AppTheme.displayMedium),
               const SizedBox(height: 8),
               Text('Log in to Luna Track',
-                  style: TextStyle(fontSize: 15,
-                      color: Colors.grey[500])),
+                  style: AppTheme.bodyLarge.copyWith(
+                      color: AppColors.textSecondary(context))),
               const SizedBox(height: 40),
 
               // Email
-              _label('Email'),
+              _label(AppLocalizations.of(context)!.email),
               const SizedBox(height: 6),
               _textField(_emailCtrl, 'you@example.com',
                   TextInputType.emailAddress),
               const SizedBox(height: 16),
 
               // Password
-              _label('Password'),
+              _label(AppLocalizations.of(context)!.password),
               const SizedBox(height: 6),
               _textField(_passwordCtrl, '••••••••',
                   TextInputType.text, obscure: true),
@@ -80,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFCEBEB),
                     borderRadius: BorderRadius.circular(8),
+                    boxShadow: AppColors.subtleShadow,
                   ),
                   child: Row(children: [
                     const Icon(Icons.error_outline,
@@ -110,8 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
-                      : const Text('Log in',
-                      style: TextStyle(fontSize: 15,
+                      : Text(AppLocalizations.of(context)!.login,
+                      style: const TextStyle(fontSize: 15,
                           fontWeight: FontWeight.w500)),
                 ),
               ),
@@ -122,14 +128,15 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account? ",
-                      style: TextStyle(color: Colors.grey[500])),
+                  Text(AppLocalizations.of(context)!.noAccount,
+                      style: TextStyle(
+                          color: AppColors.textSecondary(context))),
                   GestureDetector(
                     onTap: () => Navigator.push(context,
                         MaterialPageRoute(
                             builder: (_) => const RegisterScreen())),
-                    child: const Text('Sign up',
-                        style: TextStyle(
+                    child: Text(AppLocalizations.of(context)!.signUp,
+                        style: const TextStyle(
                             color: Color(0xFFE05D6F),
                             fontWeight: FontWeight.w500)),
                   ),
@@ -144,27 +151,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _label(String text) => Text(text,
       style: TextStyle(fontSize: 13,
-          fontWeight: FontWeight.w500, color: Colors.grey[700]));
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary(context)));
 
   Widget _textField(TextEditingController ctrl, String hint,
       TextInputType type, {bool obscure = false}) =>
-      TextField(
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: AppColors.subtleShadow,
+        ),
+        child: TextField(
         controller: ctrl,
         keyboardType: type,
         obscureText: obscure,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[400]),
+          hintStyle: TextStyle(color: AppColors.textHint(context)),
           filled: true,
-          fillColor: Colors.grey[50],
+          fillColor: AppColors.surface(context),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[200]!),
+            borderSide: BorderSide(color: AppColors.cardBorder(context)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[200]!),
+            borderSide: BorderSide(color: AppColors.cardBorder(context)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -172,6 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 16, vertical: 14),
+        ),
         ),
       );
 

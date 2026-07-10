@@ -30,6 +30,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Localization
+  intl: ^0.20.2
+
+  # Fonts
+  google_fonts: ^6.2.1
+
+  # Animations
+  lottie: ^3.1.0
 
   # Navigation
   go_router: ^13.0.0
@@ -64,11 +75,15 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/lottie/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../l10n.dart';
 import '../models/cycle_entry.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
-import 'log_screen.dart';
+import '../utils/app_colors.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/log_bottom_sheet.dart';
+import '../widgets/skeleton_loaders.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -22,10 +27,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
   static const _blue    = Color(0xFF5B8CDE);
   static const _amber   = Color(0xFFF5A623);
 
+  late PageController _pageController;
+  int _pageIndex = 0; // current page
+
   @override
   void initState() {
     super.initState();
+    // Calculate initial page based on current month
+    final now = DateTime.now();
+    _pageIndex = (now.year - 2020) * 12 + now.month - 1;
+    _pageController = PageController(initialPage: _pageIndex);
+    _selectedDate = DateTime.now();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -84,6 +103,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // ── Toggle on-cycle for a day ────────────────────────────────
   void _toggleCycle(DateTime date) {
+    HapticFeedback.mediumImpact(); // ← stronger for toggle
     final key = _dateKey(date);
     setState(() {
       if (_onCycleDays.contains(key)) {
@@ -125,32 +145,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  // ── Open log screen for selected date ────────────────────────
-  void _openLog(DateTime date) async {
-    final key        = _dateKey(date);
+  // ── Open log sheet for selected date ─────────────────────────
+  void _openLog(DateTime date) {
+    final key         = _dateKey(date);
     final existingLog = _logs[key];
-    await Navigator.push(
+    LogBottomSheet.show(
       context,
-      MaterialPageRoute(
-        builder: (_) => LogScreen(
-          date:        date,
-          existingLog: existingLog,
-        ),
-      ),
+      date:        date,
+      existingLog: existingLog,
+      onSaved:     _loadData,
     );
-    // Reload data when returning
-    _loadData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background(context),
         elevation: 0,
-        title: const Text('Calendar',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        title: Text(AppLocalizations.of(context)!.calendar,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
@@ -159,16 +174,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(
-          color: _pink))
+          ? const CalendarScreenSkeleton()
           : Column(
         children: [
           _buildMonthNav(),
-          _buildDowRow(),
-          _buildCalendarGrid(),
-          _buildLegend(),
-          const Divider(height: 1),
-          Expanded(child: _buildDetailPanel()),
+          Expanded(
+            child: Column(
+              children: [
+                _buildDowRow(),
+                // Swipeable calendar
+                SizedBox(
+                  height: 300,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (page) {
+                      HapticFeedback.lightImpact(); // ← haptic on swipe
+                      final year = 2020 + page ~/ 12;
+                      final month = page % 12 + 1;
+                      setState(() {
+                        _pageIndex = page;
+                        _focusedMonth = DateTime(year, month);
+                      });
+                    },
+                    itemBuilder: (context, page) {
+                      final year = 2020 + page ~/ 12;
+                      final month = page % 12 + 1;
+                      return _buildCalendarGridForMonth(
+                          DateTime(year, month));
+                    },
+                  ),
+                ),
+                _buildLegend(),
+                const Divider(height: 1),
+                Expanded(child: _buildDetailPanel()),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -178,14 +219,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildMonthNav() {
     const months = ['January','February','March','April','May','June',
       'July','August','September','October','November','December'];
-    return Padding(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE05D6F).withOpacity(0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFFE05D6F).withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          _navBtn(Icons.chevron_left, () => setState(() {
-            _focusedMonth = DateTime(
-                _focusedMonth.year, _focusedMonth.month - 1);
-          })),
+          _navBtn(Icons.chevron_left, () {
+            HapticFeedback.lightImpact();
+            _pageController.previousPage(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }),
           Expanded(
             child: Text(
               '${months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
@@ -194,10 +247,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ),
-          _navBtn(Icons.chevron_right, () => setState(() {
-            _focusedMonth = DateTime(
-                _focusedMonth.year, _focusedMonth.month + 1);
-          })),
+          _navBtn(Icons.chevron_right, () {
+            HapticFeedback.lightImpact();
+            _pageController.nextPage(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          }),
         ],
       ),
     );
@@ -209,9 +265,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       width: 32, height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: AppColors.cardBorder(context)),
       ),
-      child: Icon(icon, size: 18, color: Colors.grey[600]),
+      child: Icon(icon, size: 18,
+          color: AppColors.textSecondary(context)),
     ),
   );
 
@@ -226,7 +283,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Text(d,
                 style: TextStyle(fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[400])),
+                    color: AppColors.textHint(context))),
           ),
         )).toList(),
       ),
@@ -234,14 +291,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // ── Calendar grid ────────────────────────────────────────────
-  Widget _buildCalendarGrid() {
+  Widget _buildCalendarGridForMonth(DateTime focusedMonth) {
     final firstDay =
-    DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    DateTime(focusedMonth.year, focusedMonth.month, 1);
     final daysInMonth =
-        DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
+        DateTime(focusedMonth.year, focusedMonth.month + 1, 0).day;
     final startWeekday = firstDay.weekday % 7;
     final prevDays =
-        DateTime(_focusedMonth.year, _focusedMonth.month, 0).day;
+        DateTime(focusedMonth.year, focusedMonth.month, 0).day;
     final today = DateTime.now();
 
     List<Widget> cells = [];
@@ -256,7 +313,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // Current month
     for (int d = 1; d <= daysInMonth; d++) {
       final date =
-      DateTime(_focusedMonth.year, _focusedMonth.month, d);
+      DateTime(focusedMonth.year, focusedMonth.month, d);
       final key        = _dateKey(date);
       final isToday    = _sameDay(date, today);
       final isSelected = _sameDay(date, _selectedDate);
@@ -277,7 +334,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         isOnCycle: isOnCycle,
         phase: phase,
         hasLog: log != null,
-        onTap: () => setState(() => _selectedDate = date),
+        onTap: () {
+          HapticFeedback.selectionClick(); // ← light for selection
+          setState(() => _selectedDate = date);
+        },
       ));
     }
 
@@ -309,8 +369,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }) {
     // Background color
     Color? bgColor;
-    Color textColor =
-    isCurrentMonth ? Colors.grey[800]! : Colors.grey[300]!;
+    Color textColor = isCurrentMonth
+        ? AppColors.textPrimary(context)
+        : AppColors.textHint(context);
 
     if (isOnCycle) {
       bgColor   = _pink;            // RED = actual on cycle
@@ -375,7 +436,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         spacing: 12, runSpacing: 6,
         alignment: WrapAlignment.center,
         children: [
-          _legendItem(_pink, _pink, 'On cycle'),
+          _legendItem(_pink, _pink,
+              AppLocalizations.of(context)!.onCycle),
           _legendItem(const Color(0xFFFBEAF0), const Color(0xFFF4C0D1), 'Predicted period'),
           _legendItem(const Color(0xFFFFF3E0), const Color(0xFFEF9F27), 'Follicular'),
           _legendItem(const Color(0xFFE6F1FB), const Color(0xFFB5D4F4), 'Fertile window'),
@@ -395,12 +457,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
               color: bg,
               borderRadius: BorderRadius.circular(3),
               border: Border.all(color: border),
+              boxShadow: AppColors.subtleShadow,
             ),
           ),
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
-                  fontSize: 11, color: Colors.grey[500])),
+                  fontSize: 11,
+                  color: AppColors.textSecondary(context))),
         ],
       );
 
@@ -414,12 +478,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final dateStr =
         '${_selectedDate.day} ${months[_selectedDate.month - 1]} ${_selectedDate.year}';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(14),
-      child: Container(
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: const Color(0xFFE05D6F),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(14),
+        child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[200]!),
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: AppColors.getShadow(context),
         ),
         child: Column(
           children: [
@@ -428,7 +497,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: AppColors.surface(context),
                 borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12)),
               ),
@@ -439,9 +508,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           fontSize: 13,
                           fontWeight: FontWeight.w500)),
                   const Spacer(),
-                  Text('On cycle',
+                  Text(AppLocalizations.of(context)!.onCycle,
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey[500])),
+                          fontSize: 12,
+                          color: AppColors.textSecondary(context))),
                   const SizedBox(width: 8),
                   // Toggle switch
                   GestureDetector(
@@ -452,7 +522,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(11),
                         color: isOnCycle
-                            ? _pink : Colors.grey[300],
+                            ? _pink : AppColors.cardBorder(context),
                       ),
                       child: AnimatedAlign(
                         duration: const Duration(milliseconds: 200),
@@ -482,33 +552,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _detailRow(Icons.water_drop_outlined,
-                        'Flow', log.flow, _pink),
+                        AppLocalizations.of(context)!.flow,
+                        log.flow, _pink),
                     if (log.moods.isNotEmpty)
                       _detailChipRow(
                           Icons.sentiment_satisfied_alt_outlined,
-                          'Mood', log.moods, _amber),
+                          AppLocalizations.of(context)!.mood,
+                          log.moods, _amber),
                     if (log.symptoms.isNotEmpty)
                       _detailChipRow(
                           Icons.monitor_heart_outlined,
-                          'Symptoms', log.symptoms, _pink),
+                          AppLocalizations.of(context)!.symptoms,
+                          log.symptoms, _pink),
                     if (log.energy.isNotEmpty)
                       _detailRow(Icons.bolt_outlined,
-                          'Energy', log.energy, _teal),
+                          AppLocalizations.of(context)!.energy,
+                          log.energy, _teal),
                     if (log.sleep.isNotEmpty)
                       _detailRow(Icons.bedtime_outlined,
-                          'Sleep', log.sleep, _blue),
+                          AppLocalizations.of(context)!.sleep,
+                          log.sleep, _blue),
                     if (log.notes.isNotEmpty)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.notes_outlined,
-                              size: 16, color: Colors.grey[400]),
+                              size: 16,
+                              color: AppColors.textHint(context)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(log.notes,
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[500])),
+                                    color: AppColors.textSecondary(context))),
                           ),
                         ],
                       ),
@@ -516,11 +592,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             ] else ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text('No log for this day',
-                    style: TextStyle(
-                        fontSize: 13, color: Colors.grey[400])),
+              EmptyState(
+                type: EmptyStateType.noCalendarLog,
+                onAction: () => _openLog(_selectedDate),
+                actionLabel: 'Thêm nhật ký',
               ),
             ],
 
@@ -541,7 +616,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     const Icon(Icons.edit_outlined,
                         color: Colors.white, size: 16),
                     const SizedBox(width: 6),
-                    Text(log != null ? 'Edit log' : 'Add log',
+                    Text(log != null
+                            ? AppLocalizations.of(context)!.editLog
+                            : AppLocalizations.of(context)!.addLog,
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -552,6 +629,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -561,11 +639,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Row(children: [
-          Icon(icon, size: 16, color: Colors.grey[400]),
+          Icon(icon, size: 16, color: AppColors.textHint(context)),
           const SizedBox(width: 8),
           Text('$label: ',
               style: TextStyle(
-                  fontSize: 13, color: Colors.grey[500])),
+                  fontSize: 13,
+                  color: AppColors.textSecondary(context))),
           Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: 8, vertical: 2),
@@ -589,11 +668,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 16, color: Colors.grey[400]),
+            Icon(icon, size: 16,
+                color: AppColors.textHint(context)),
             const SizedBox(width: 8),
             Text('$label: ',
                 style: TextStyle(
-                    fontSize: 13, color: Colors.grey[500])),
+                    fontSize: 13,
+                    color: AppColors.textSecondary(context))),
             Expanded(
               child: Wrap(
                 spacing: 4, runSpacing: 4,
